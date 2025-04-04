@@ -1,0 +1,82 @@
+.view-instructors {
+    padding: 2rem;
+}
+
+.view-instructors h2 {
+    color: #333;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.instructors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+    padding: 1rem;
+}
+
+.instructor-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.instructor-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.instructor-info h3 {
+    color: #333;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+.instructor-info p {
+    margin: 0.5rem 0;
+    color: #666;
+}
+
+.instructor-info .email {
+    color: #4EA685;
+    font-weight: 500;
+}
+
+.instructor-info .specialization,
+.instructor-info .qualifications {
+    font-size: 0.9rem;
+}
+
+.instructor-info .courses-count {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+    font-weight: 500;
+}
+
+.loading {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+}
+
+.error-message {
+    background-color: #ffebee;
+    color: #c62828;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .instructors-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .view-instructors {
+        padding: 1rem;
+    }
+} 
