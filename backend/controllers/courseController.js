@@ -192,15 +192,30 @@ exports.addAssignment = async (req, res) => {
 exports.deleteCourse = async (req, res) => {
     try {
         const { courseId } = req.params;
-        const instructorId = req.user.id;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        console.log('Delete course request:', { courseId, userId, userRole });
 
         const course = await Course.findById(courseId);
         if (!course) {
             return res.status(404).json({ message: "Course not found" });
         }
 
-        // Check if the user is the instructor of the course
-        if (course.instructor.toString() !== instructorId) {
+        console.log('Course found:', { 
+            courseId: course._id.toString(), 
+            instructorId: course.instructor.toString(),
+            userId: userId.toString(),
+            userRole 
+        });
+
+        // Allow admins to delete any course, or instructors to delete their own courses
+        if (userRole !== 'admin' && course.instructor.toString() !== userId.toString()) {
+            console.log('Authorization failed:', {
+                userRole,
+                isAdmin: userRole === 'admin',
+                isInstructor: course.instructor.toString() === userId.toString()
+            });
             return res.status(403).json({ message: "Not authorized to delete this course" });
         }
 

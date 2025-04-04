@@ -229,6 +229,7 @@ const Instructor = () => {
                 return;
             }
 
+            console.log('Attempting to delete course:', courseId);
             const response = await fetch(`${API_URL}/api/courses/${courseId}`, {
                 method: 'DELETE',
                 headers: {
@@ -237,13 +238,14 @@ const Instructor = () => {
                 }
             });
 
+            console.log('Delete response status:', response.status);
+
             if (response.status === 401) {
                 localStorage.removeItem('token');
                 navigate('/login');
                 return;
             }
 
-            // Parse the response only if it has content
             let data;
             const contentType = response.headers.get("content-type");
             if (contentType && contentType.includes("application/json")) {
@@ -251,6 +253,7 @@ const Instructor = () => {
             }
 
             if (!response.ok) {
+                console.error('Delete failed:', data);
                 throw new Error(data?.message || 'Failed to delete course');
             }
 
@@ -262,9 +265,13 @@ const Instructor = () => {
             if (selectedCourse && selectedCourse._id === courseId) {
                 setSelectedCourse(null);
             }
+
+            // Show success message
+            alert('Course deleted successfully');
         } catch (err) {
             console.error('Error deleting course:', err);
             setError(err.message || 'Failed to delete course. Please try again.');
+            alert(err.message || 'Failed to delete course. Please try again.');
         }
     };
 
