@@ -7,7 +7,7 @@ require("dotenv").config();
 // Register a new user
 exports.registerUser = async (req, res) => {
     try {
-        const { firstName, lastName, email, password } = req.body;
+        const { firstName, lastName, email, password, role } = req.body;
 
         // Check if user already exists
         let user = await User.findOne({ email });
@@ -21,7 +21,7 @@ exports.registerUser = async (req, res) => {
             lastName,
             email,
             password,
-            role: 'student' // Default role
+            role: role || 'student' // Use provided role or default to student
         });
 
         // Hash password
@@ -41,10 +41,19 @@ exports.registerUser = async (req, res) => {
         jwt.sign(
             payload,
             process.env.JWT_SECRET,
-            { expiresIn: "5h" },
+            { expiresIn: process.env.JWT_EXPIRE || "30d" },
             (err, token) => {
                 if (err) throw err;
-                res.json({ token });
+                res.json({ 
+                    token,
+                    user: {
+                        id: user.id,
+                        role: user.role,
+                        firstName: user.firstName,
+                        lastName: user.lastName,
+                        email: user.email
+                    }
+                });
             }
         );
     } catch (err) {
@@ -92,7 +101,7 @@ exports.registerInstructor = async (req, res) => {
         jwt.sign(
             payload,
             process.env.JWT_SECRET,
-            { expiresIn: "5h" },
+            { expiresIn: process.env.JWT_EXPIRE || "30d" },
             (err, token) => {
                 if (err) {
                     console.error('Error generating token:', err);
@@ -141,7 +150,7 @@ exports.loginUser = async (req, res) => {
         jwt.sign(
             payload,
             process.env.JWT_SECRET,
-            { expiresIn: "5h" },
+            { expiresIn: process.env.JWT_EXPIRE || "30d" },
             (err, token) => {
                 if (err) {
                     console.error('Error generating token:', err);

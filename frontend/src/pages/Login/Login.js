@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom"; // Redirect after login
 import "./Login.css";
+import axios from "axios";
+
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const Login = () => {
     const [formData, setFormData] = useState({
@@ -22,22 +25,22 @@ const Login = () => {
         setLoading(true);
         
         try {
-            const response = await fetch("http://localhost:5000/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+            console.log("Attempting login with:", formData.email);
+            
+            const response = await axios.post(`${API_URL}/api/auth/login`, formData, {
+                headers: { "Content-Type": "application/json" }
             });
 
-            const data = await response.json();
+            console.log("Login response:", response.data);
 
-            if (response.ok) {
-                localStorage.setItem("token", data.token);
-                localStorage.setItem("userRole", data.user.role);
-                localStorage.setItem("userId", data.user.id);
-                localStorage.setItem("userName", `${data.user.firstName} ${data.user.lastName}`);
+            if (response.data && response.data.token) {
+                localStorage.setItem("token", response.data.token);
+                localStorage.setItem("userRole", response.data.user.role);
+                localStorage.setItem("userId", response.data.user.id);
+                localStorage.setItem("userName", `${response.data.user.firstName} ${response.data.user.lastName}`);
                 
                 // Redirect based on user role
-                switch (data.user.role) {
+                switch (response.data.user.role) {
                     case "admin":
                         navigate("/admin");
                         break;
@@ -51,11 +54,22 @@ const Login = () => {
                         navigate("/");
                 }
             } else {
-                setError(data.message || "Invalid credentials");
+                setError("Invalid response from server");
             }
         } catch (error) {
-            console.error("Error:", error);
-            setError("An error occurred during login. Please try again.");
+            console.error("Login error:", error);
+            
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                // that falls out of the range of 2xx
+                setError(error.response.data.message || "Invalid credentials");
+            } else if (error.request) {
+                // The request was made but no response was received
+                setError("No response from server. Please check if the backend is running.");
+            } else {
+                // Something happened in setting up the request that triggered an Error
+                setError(`An error occurred: ${error.message}`);
+            }
         } finally {
             setLoading(false);
         }

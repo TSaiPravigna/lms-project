@@ -20,23 +20,57 @@ const SignIn = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Validate passwords match
+        if (formData.password !== formData.confirmPassword) {
+            alert("Passwords do not match!");
+            return;
+        }
+        
         try {
             const response = await fetch("http://localhost:5000/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify({
+                    email: formData.email,
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    password: formData.password,
+                    role: formData.role
+                }),
             });
 
             const data = await response.json();
 
             if (response.ok) {
+                // Store token and user role in localStorage
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("userRole", data.user.role);
+                localStorage.setItem("userId", data.user.id);
+                localStorage.setItem("userName", `${data.user.firstName} ${data.user.lastName}`);
+                
                 alert("Registration successful!");
-                navigate("/login"); // Redirect to login page
+                
+                // Redirect based on user role
+                switch (data.user.role) {
+                    case "admin":
+                        navigate("/admin");
+                        break;
+                    case "instructor":
+                        navigate("/instructor");
+                        break;
+                    case "student":
+                        navigate("/student");
+                        break;
+                    default:
+                        navigate("/");
+                }
             } else {
-                alert(data.message);
+                alert(data.message || "Registration failed");
             }
         } catch (error) {
             console.error("Error:", error);
+            alert("An error occurred during registration");
         }
     };
 

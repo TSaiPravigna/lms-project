@@ -1,16 +1,25 @@
 const express = require("express");
 const router = express.Router();
-const { getAllInstructors } = require("../controllers/adminController");
-const auth = require("../middleware/auth");
-const checkRole = require("../middleware/checkRole");
+const adminController = require("../controllers/adminController");
+const { protect, authorize } = require("../middleware/auth");
 
-// Apply auth middleware to all routes
-router.use(auth);
+// All routes are protected and require admin role
+router.use(protect);
+router.use(authorize('admin'));
 
-// Apply admin role check to all routes
-router.use(checkRole(['admin']));
+// User management routes
+router.get("/instructors", adminController.getAllInstructors);
+router.get("/students", adminController.getAllStudents);
+router.get("/admins", adminController.getAllAdmins);
 
-// Get all instructors
-router.get("/instructors", getAllInstructors);
+router.post("/instructors", adminController.addInstructor);
+router.post("/students", adminController.addStudent);
+router.post("/admins", adminController.addAdmin);
+
+router.delete("/users/:userId", adminController.deleteUser);
+
+// Course management routes
+router.get("/courses", adminController.getAllCourses);
+router.delete("/courses/:courseId", adminController.deleteCourse);
 
 module.exports = router; 

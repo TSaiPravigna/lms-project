@@ -9,10 +9,11 @@ const {
     addAssignment,
     updateCourseThumbnail,
     deleteCourse,
-    getCourseById
+    getCourseById,
+    removeStudentFromCourse
 } = require("../controllers/courseController");
-const auth = require("../middleware/auth");
-const checkRole = require("../middleware/checkRole");
+const { protect, authorize } = require("../middleware/auth");
+const Course = require("../models/Course");
 
 const router = express.Router();
 
@@ -20,14 +21,17 @@ const router = express.Router();
 router.get("/", getAllCourses);
 
 // Protected routes
-router.post("/", auth, checkRole(['instructor', 'admin']), createCourse);
-router.get("/instructor", auth, checkRole(['instructor']), getInstructorCourses);
-router.get("/enrolled", auth, checkRole(['student']), getEnrolledCourses);
-router.get("/:courseId", auth, getCourseById);
-router.post("/:courseId/enroll", auth, checkRole(['student']), enrollInCourse);
-router.post("/:courseId/lessons", auth, checkRole(['instructor']), addLesson);
-router.post("/:courseId/assignments", auth, checkRole(['instructor']), addAssignment);
-router.put("/:courseId/thumbnail", auth, checkRole(['instructor']), updateCourseThumbnail);
-router.delete("/:courseId", auth, checkRole(['instructor', 'admin']), deleteCourse);
+router.post("/", protect, authorize('instructor', 'admin'), createCourse);
+router.get("/instructor", protect, authorize('instructor'), getInstructorCourses);
+router.get("/enrolled", protect, authorize('student'), getEnrolledCourses);
+router.get("/:courseId", protect, getCourseById);
+router.post("/:courseId/enroll", protect, authorize('student'), enrollInCourse);
+router.post("/:courseId/lessons", protect, authorize('instructor'), addLesson);
+router.post("/:courseId/assignments", protect, authorize('instructor'), addAssignment);
+router.put("/:courseId/thumbnail", protect, authorize('instructor'), updateCourseThumbnail);
+router.delete("/:courseId", protect, authorize('instructor', 'admin'), deleteCourse);
+
+// Route to remove a student from a course (instructor only)
+router.delete("/:courseId/students/:studentId", protect, authorize('instructor'), removeStudentFromCourse);
 
 module.exports = router; 

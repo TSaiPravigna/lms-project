@@ -28,7 +28,7 @@ const Header = () => {
                         {userRole === "admin" && (
                             <>
                                 <Link to="/admin">Admin Dashboard</Link>
-                                <Link to="/courses">Manage Courses</Link>
+                                <Link to="/admin/manage-courses">Manage Courses</Link>
                                 <Link to="/instructors">Manage Instructors</Link>
                             </>
                         )}

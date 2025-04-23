@@ -7,6 +7,9 @@ import Admin from "./pages/Admin/Admin";
 import Instructor from "./pages/Instructor/Instructor";
 import Student from "./pages/Student/Student";
 import CourseView from "./pages/CourseView/CourseView";
+import MyCourses from "./pages/MyCourses/MyCourse";
+import ManageInstructors from "./pages/ManageInstructors/ManageInstructors";
+import Courses from "./pages/Courses/Courses";
 
 function App() {
   const userRole = localStorage.getItem("userRole");
@@ -34,6 +37,18 @@ function App() {
         <Route
           path="/course/:courseId"
           element={isAuthenticated ? <CourseView /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/my-courses"
+          element={isAuthenticated ? <MyCourses /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/instructors"
+          element={userRole === "admin" ? <ManageInstructors /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/admin/manage-courses"
+          element={userRole === "admin" ? <Courses /> : <Navigate to="/login" />}
         />
       </Routes>
     </div>

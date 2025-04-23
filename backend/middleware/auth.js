@@ -1,34 +1,56 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-const auth = async (req, res, next) => {
-    try {
-        // Get token from header
-        const token = req.header("Authorization")?.replace("Bearer ", "");
-        
-        if (!token) {
-            return res.status(401).json({ message: "No token, authorization denied" });
-        }
+// Protect routes
+exports.protect = async (req, res, next) => {
+    let token;
 
-        // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        
-        // Find user
-        const user = await User.findById(decoded.user.id);
-        if (!user) {
-            return res.status(401).json({ message: "User not found" });
-        }
+    console.log('Auth Headers:', req.headers);
 
-        // Add user and role to request
-        req.user = {
-            id: user._id,
-            role: user.role
-        };
-        next();
-    } catch (error) {
-        console.error('Auth middleware error:', error);
-        res.status(401).json({ message: "Token is not valid" });
+    if (
+        req.headers.authorization &&
+        req.headers.authorization.startsWith('Bearer')
+    ) {
+        try {
+            // Get token from header
+            token = req.headers.authorization.split(' ')[1];
+            console.log('Token:', token);
+
+            // Verify token
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log('Decoded token:', decoded);
+
+            // Get user from the token
+            const userId = decoded.user?.id || decoded.id;
+            if (!userId) {
+                throw new Error('Invalid token structure');
+            }
+
+            req.user = await User.findById(userId).select('-password');
+            if (!req.user) {
+                throw new Error('User not found');
+            }
+
+            console.log('User from token:', req.user);
+            next();
+        } catch (error) {
+            console.error('Token verification error:', error);
+            res.status(401).json({ message: 'Not authorized, token failed' });
+        }
+    } else {
+        console.log('No token found');
+        res.status(401).json({ message: 'Not authorized, no token' });
     }
 };
 
-module.exports = auth; 
+// Grant access to specific roles
+exports.authorize = (...roles) => {
+    return (req, res, next) => {
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({ 
+                message: `User role ${req.user.role} is not authorized to access this route`
+            });
+        }
+        next();
+    };
+}; 

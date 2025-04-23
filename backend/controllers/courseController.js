@@ -1,38 +1,119 @@
 const Course = require("../models/Course");
 const User = require("../models/User");
+const path = require('path');
 
 // Create a new course
 exports.createCourse = async (req, res) => {
     try {
-        const { title, description, level, videoUrl, thumbnail } = req.body;
-        const instructor = req.user.id; // From auth middleware
+        const { title, description, level, category, status, startDate, videoUrl, price, instructor: instructorId } = req.body;
+        const creatorId = req.user.id; // From auth middleware
+        const creatorRole = req.user.role;
+
+        console.log('Creating course with data:', {
+            title,
+            description,
+            level,
+            category,
+            status,
+            startDate,
+            videoUrl,
+            price,
+            instructorId,
+            hasVideoFile: !!req.files?.video,
+            hasThumbnailFile: !!req.files?.thumbnail
+        });
 
         // Validate required fields
-        if (!title || !description || !level || !videoUrl) {
-            return res.status(400).json({ message: "Please provide all required fields" });
+        const missingFields = [];
+        if (!title) missingFields.push('title');
+        if (!description) missingFields.push('description');
+        if (!level) missingFields.push('level');
+        if (!category) missingFields.push('category');
+        
+        // If admin is creating course, instructor ID is required
+        if (creatorRole === 'admin' && !instructorId) {
+            missingFields.push('instructor');
+        }
+        
+        if (missingFields.length > 0) {
+            return res.status(400).json({ 
+                message: `Please provide all required fields: ${missingFields.join(', ')}` 
+            });
         }
 
-        // Create initial lesson with the video URL
-        const initialLesson = {
-            title: "Introduction",
-            description: "Course introduction",
-            videoUrl: videoUrl,
-            duration: "0:00",
-            order: 1
-        };
+        // Handle file uploads if they exist
+        let thumbnailUrl = '';
+        let videoUrlToUse = videoUrl;
+
+        // If a video file was uploaded, process it
+        if (req.files && req.files.video) {
+            const videoFile = req.files.video;
+            const videoPath = `/uploads/videos/${Date.now()}-${videoFile.name}`;
+            
+            // Save the file
+            videoFile.mv(path.join(__dirname, '..', videoPath), (err) => {
+                if (err) {
+                    console.error('Error saving video file:', err);
+                    return res.status(500).json({ message: "Error saving video file" });
+                }
+            });
+            
+            videoUrlToUse = videoPath;
+        }
+
+        // If a thumbnail was uploaded, process it
+        if (req.files && req.files.thumbnail) {
+            const thumbnailFile = req.files.thumbnail;
+            const thumbnailPath = `/uploads/thumbnails/${Date.now()}-${thumbnailFile.name}`;
+            
+            // Save the file
+            thumbnailFile.mv(path.join(__dirname, '..', thumbnailPath), (err) => {
+                if (err) {
+                    console.error('Error saving thumbnail file:', err);
+                    return res.status(500).json({ message: "Error saving thumbnail file" });
+                }
+            });
+            
+            thumbnailUrl = thumbnailPath;
+        }
+
+        // Create initial lesson with the video URL if provided
+        let lessons = [];
+        if (videoUrlToUse) {
+            lessons.push({
+                title: "Introduction",
+                description: "Course introduction",
+                videoUrl: videoUrlToUse,
+                duration: "0:00",
+                order: 1
+            });
+        } else {
+            // Create a placeholder lesson if no video is provided
+            lessons.push({
+                title: "Introduction",
+                description: "Course introduction",
+                videoUrl: "",
+                duration: "0:00",
+                order: 1
+            });
+        }
 
         const course = new Course({
             title,
             description,
-            instructor,
+            instructor: creatorRole === 'admin' ? instructorId : creatorId,
             level,
-            thumbnail,
-            lessons: [initialLesson],
+            category,
+            thumbnail: thumbnailUrl,
+            lessons: lessons,
             enrolledStudents: [],
-            status: 'Published'
+            status: status || 'Draft',
+            startDate: startDate || null,
+            price: price || 0
         });
 
         await course.save();
+        console.log('Course created successfully:', course);
         res.status(201).json(course);
     } catch (error) {
         console.error('Error creating course:', error);
@@ -71,12 +152,19 @@ exports.getAllCourses = async (req, res) => {
     try {
         console.log('Fetching all published courses...');
         const courses = await Course.find({ status: 'Published' })
-            .populate('instructor', 'firstName lastName');
+            .populate('instructor', 'firstName lastName')
+            .select('title description instructor category level thumbnail enrolledStudents');
+            
         console.log('Found courses:', courses);
+        
+        if (!courses) {
+            return res.status(404).json({ message: 'No courses found' });
+        }
+        
         res.json(courses);
     } catch (error) {
         console.error('Error in getAllCourses:', error);
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Failed to fetch courses", error: error.message });
     }
 };
 
@@ -260,6 +348,48 @@ exports.getCourseById = async (req, res) => {
         }
     } catch (error) {
         console.error('Error in getCourseById:', error);
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+};
+
+// Remove student from course
+exports.removeStudentFromCourse = async (req, res) => {
+    try {
+        const { courseId, studentId } = req.params;
+        const instructorId = req.user.id;
+
+        console.log('Remove student request:', { courseId, studentId, instructorId });
+
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({ message: "Course not found" });
+        }
+
+        // Verify the instructor owns this course
+        if (course.instructor.toString() !== instructorId) {
+            return res.status(403).json({ message: "Not authorized to remove students from this course" });
+        }
+
+        // Check if student is enrolled in the course
+        if (!course.enrolledStudents.includes(studentId)) {
+            return res.status(400).json({ message: "Student is not enrolled in this course" });
+        }
+
+        // Remove student from course
+        course.enrolledStudents = course.enrolledStudents.filter(
+            id => id.toString() !== studentId
+        );
+        await course.save();
+
+        // Remove course from student's enrolled courses
+        await User.findByIdAndUpdate(
+            studentId,
+            { $pull: { enrolledCourses: courseId } }
+        );
+
+        res.json({ message: "Student removed from course successfully" });
+    } catch (error) {
+        console.error('Error removing student from course:', error);
         res.status(500).json({ message: "Server Error", error: error.message });
     }
 }; 

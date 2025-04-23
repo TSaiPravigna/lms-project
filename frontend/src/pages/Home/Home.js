@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import CourseCard from '../../components/CourseCard/CourseCard';
 import './Home.css';
 
-const API_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000';
+const API_URL = 'http://localhost:5000';
 
 const Home = () => {
     const [courses, setCourses] = useState([]);
@@ -19,8 +19,15 @@ const Home = () => {
     const fetchCourses = async () => {
         try {
             setLoading(true);
+            setError(null);
             console.log('Fetching courses from:', `${API_URL}/api/courses`);
-            const response = await fetch(`${API_URL}/api/courses`);
+            
+            const response = await fetch(`${API_URL}/api/courses`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
             
             if (!response.ok) {
                 const errorData = await response.json();
@@ -35,10 +42,9 @@ const Home = () => {
             }
             
             setCourses(data);
-            setError(null);
         } catch (error) {
             console.error('Error fetching courses:', error);
-            setError(error.message);
+            setError(error.message || 'Failed to fetch courses. Please try again later.');
         } finally {
             setLoading(false);
         }
@@ -71,7 +77,7 @@ const Home = () => {
                 </div>
             </section>
 
-            <section ref={coursesRef} id="courses" className="featured-courses">
+            <section id="courses" ref={coursesRef} className="courses-section">
                 <h2>Featured Courses</h2>
                 {loading ? (
                     <div className="loading">Loading courses...</div>
